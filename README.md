@@ -490,7 +490,7 @@ Más detalles: `docs/ROLE_B_FRONTEND_INFRA.md`.
 
 ---
 
-## 🤖 Guía para contribuyentes y agentes de IA
+## 🤖 Guía para contribuyentes
 
 Antes de proponer cambios importantes:
 
@@ -527,7 +527,7 @@ Antes de proponer cambios importantes:
 
 ---
 
-## 🚀 Mejoras futuras sugeridas
+## 🚀 Mejoras futuras planteadas
 
 - Autenticación de dos factores (2FA).
 - Integración con sistemas de ticketing (por ejemplo, crear tickets a partir de hallazgos críticos).
