@@ -1,0 +1,101 @@
+version: "3.9"
+
+name: auditor-web-dev
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: auditor_db
+    restart: unless-stopped
+    env_file:
+      - ./env/.env.dev
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - auditor_net
+
+  api:
+    build:
+      context: .
+      dockerfile: ./docker/api/Dockerfile
+    container_name: auditor_api
+    restart: unless-stopped
+    env_file:
+      - ./env/.env.dev
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      API_HOST: ${API_HOST}
+      API_PORT: ${API_PORT}
+      API_LOG_LEVEL: ${API_LOG_LEVEL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+    volumes:
+      - ./backend:/app/backend  # Hot reload para Rol A
+      - ./reports:/app/reports
+      - /var/run/docker.sock:/var/run/docker.sock  # Para lanzar contenedores de ZAP/Nuclei
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"  # acceso directo si hace falta
+    command: >
+      uvicorn main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+    networks:
+      - auditor_net
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./docker/frontend/Dockerfile
+    container_name: auditor_frontend
+    restart: unless-stopped
+    env_file:
+      - ./env/.env.dev
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+      NODE_ENV: development
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - api
+    ports:
+      - "3000:3000" # para debug directo si quieres
+    command: ["npm", "run", "dev"]
+    networks:
+      - auditor_net
+
+  proxy:
+    image: caddy:2
+    container_name: auditor_proxy
+    restart: unless-stopped
+    volumes:
+      - ./docker/proxy/Caddyfile.dev:/etc/caddy/Caddyfile:ro
+    ports:
+      - "${DEV_PROXY_HTTP_PORT:-8080}:8080"
+    depends_on:
+      - frontend
+      - api
+    networks:
+      - auditor_net
+
+volumes:
+  db_data:
+
+networks:
+  auditor_net:
+    driver: bridge

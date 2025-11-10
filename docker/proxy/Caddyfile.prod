@@ -1,0 +1,13 @@
+{
+  email tu-correo@ejemplo.com
+}
+
+auditor.tu-dominio.com {
+  encode gzip
+  reverse_proxy frontend:3000
+}
+
+api.auditor.tu-dominio.com {
+  encode gzip
+  reverse_proxy api:8000
+}
