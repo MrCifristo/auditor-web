@@ -1,5 +1,3 @@
-version: "3.9"
-
 name: auditor-web-dev
 
 services:
@@ -10,9 +8,9 @@ services:
     env_file:
       - ./env/.env.dev
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_USER: ${POSTGRES_USER:-auditor_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB: ${POSTGRES_DB:-auditor_db}
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
@@ -50,18 +48,14 @@ services:
         condition: service_healthy
     ports:
       - "8000:8000"  # acceso directo si hace falta
-    command: >
-      uvicorn main:app
-      --host 0.0.0.0
-      --port 8000
-      --reload
+    command: sh -c "cd /app/backend && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     networks:
       - auditor_net
 
   frontend:
     build:
       context: .
-      dockerfile: ./docker/frontend/Dockerfile
+      dockerfile: ./docker/frontend/Dockerfile.dev
     container_name: auditor_frontend
     restart: unless-stopped
     env_file:
@@ -71,6 +65,8 @@ services:
       NODE_ENV: development
     volumes:
       - ./frontend:/app
+      - /app/node_modules  # Preservar node_modules del contenedor
+      - /app/.next        # Preservar .next del contenedor
     depends_on:
       - api
     ports:

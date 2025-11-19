@@ -1,0 +1,3 @@
+# Esta carpeta almacena los reportes generados por los escaneos
+# Se monta como volumen en Docker
+
