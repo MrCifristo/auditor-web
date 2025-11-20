@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     nuclei_rate_limit: int = 150
     sslyze_timeout: int = 120
     
+    # Docker
+    docker_base_url: Optional[str] = "unix:///var/run/docker.sock"
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -44,4 +47,3 @@ class Settings(BaseSettings):
 
 # Instancia global de settings
 settings = Settings()
-

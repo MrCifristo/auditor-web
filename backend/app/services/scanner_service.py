@@ -18,10 +18,12 @@ class ScannerService:
     
     def __init__(self):
         """Inicializar cliente de Docker"""
+        base_url = settings.docker_base_url or "unix:///var/run/docker.sock"
+        self.docker_client = None
         try:
-            self.docker_client = docker.from_env()
+            self.docker_client = docker.DockerClient(base_url=base_url)
         except Exception as e:
-            raise Exception(f"No se pudo conectar a Docker: {str(e)}")
+            print(f"[ScannerService] No se pudo conectar a Docker ({base_url}). Se usarán resultados simulados. Detalle: {e}")
     
     @staticmethod
     def execute_scan(db: Session, job_id: str, target_url: str, tools: List[str]):
@@ -88,30 +90,50 @@ class ScannerService:
     def _run_zap(self, target_url: str) -> List[Dict[str, Any]]:
         """Ejecutar OWASP ZAP baseline scan"""
         try:
+            if self.docker_client is None:
+                raise RuntimeError("Docker client no disponible")
             from app.services.scanners.zap_scanner import ZAPScanner
             scanner = ZAPScanner(self.docker_client)
             return scanner.scan(target_url)
         except Exception as e:
             print(f"Error ejecutando ZAP: {str(e)}")
-            return []
+            return [{
+                "severity": FindingSeverity.INFO,
+                "title": "ZAP Scan Error",
+                "description": f"Error ejecutando ZAP: {str(e)}",
+                "recommendation": "Verifica la configuración de Docker/ZAP y vuelve a intentar."
+            }]
     
     def _run_nuclei(self, target_url: str) -> List[Dict[str, Any]]:
         """Ejecutar Nuclei scan"""
         try:
+            if self.docker_client is None:
+                raise RuntimeError("Docker client no disponible")
             from app.services.scanners.nuclei_scanner import NucleiScanner
             scanner = NucleiScanner(self.docker_client)
             return scanner.scan(target_url)
         except Exception as e:
             print(f"Error ejecutando Nuclei: {str(e)}")
-            return []
+            return [{
+                "severity": FindingSeverity.INFO,
+                "title": "Nuclei Scan Error",
+                "description": f"Error ejecutando Nuclei: {str(e)}",
+                "recommendation": "Valida que el motor de Nuclei y Docker estén disponibles."
+            }]
     
     def _run_sslyze(self, target_url: str) -> List[Dict[str, Any]]:
         """Ejecutar SSLyze scan"""
         try:
+            if self.docker_client is None:
+                raise RuntimeError("Docker client no disponible")
             from app.services.scanners.sslyze_scanner import SSLyzeScanner
             scanner = SSLyzeScanner(self.docker_client)
             return scanner.scan(target_url)
         except Exception as e:
             print(f"Error ejecutando SSLyze: {str(e)}")
-            return []
-
+            return [{
+                "severity": FindingSeverity.INFO,
+                "title": "SSLyze Scan Error",
+                "description": f"Error ejecutando SSLyze: {str(e)}",
+                "recommendation": "Revisa la conectividad TLS y la configuración del escáner."
+            }]

@@ -29,6 +29,7 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       API_HOST: 0.0.0.0
       API_PORT: 8000
+      DOCKER_HOST: ${DOCKER_HOST:-unix:///var/run/docker.sock}
     volumes:
       - ./reports:/app/reports
       - /var/run/docker.sock:/var/run/docker.sock

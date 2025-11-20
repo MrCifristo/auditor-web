@@ -187,15 +187,20 @@ async def get_top_targets(
     """
     Obtener top targets con más findings
     """
-    results = db.query(
-        Target.id,
-        Target.url,
-        func.count(Finding.id).label("count")
-    ).join(Job).join(Finding).filter(
-        Job.user_id == current_user.id
-    ).group_by(Target.id, Target.url).order_by(
-        func.count(Finding.id).desc()
-    ).limit(limit).all()
+    results = (
+        db.query(
+            Target.id,
+            Target.url,
+            func.count(Finding.id).label("count")
+        )
+        .join(Job, Job.target_id == Target.id)
+        .join(Finding, Finding.job_id == Job.id)
+        .filter(Job.user_id == current_user.id)
+        .group_by(Target.id, Target.url)
+        .order_by(func.count(Finding.id).desc())
+        .limit(limit)
+        .all()
+    )
     
     data = [
         TargetCount(
@@ -207,4 +212,3 @@ async def get_top_targets(
     ]
     
     return MetricsTopTargetsResponse(data=data)
-

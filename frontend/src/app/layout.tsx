@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import '../styles/globals.css'
+import { Providers } from './providers'
 
 export const metadata: Metadata = {
   title: 'Auditor Web de Seguridad',
@@ -13,8 +14,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body className="bg-gray-50 text-gray-900 dark:bg-slate-900 dark:text-slate-100">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   )
 }
-

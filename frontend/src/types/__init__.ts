@@ -1,2 +1,1 @@
-// TypeScript types
-
+export * from './index'

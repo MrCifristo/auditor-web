@@ -29,6 +29,7 @@ services:
       context: .
       dockerfile: ./docker/api/Dockerfile
     container_name: auditor_api
+    privileged: true
     restart: unless-stopped
     env_file:
       - ./env/.env.dev
@@ -39,6 +40,7 @@ services:
       API_LOG_LEVEL: ${API_LOG_LEVEL}
       JWT_SECRET: ${JWT_SECRET}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
+      DOCKER_HOST: unix:///var/run/docker.sock
     volumes:
       - ./backend:/app/backend  # Hot reload para Rol A
       - ./reports:/app/reports
