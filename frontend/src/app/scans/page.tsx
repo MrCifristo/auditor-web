@@ -55,14 +55,14 @@ export default function ScansPage() {
         setError(null);
         setLoading(false);
         
-        // Solo continuar polling si hay jobs en ejecución o estamos viendo todos
+        // Solo iniciar polling si hay jobs en ejecución
         const hasRunning = data.some((job) => job.status === "running" || job.status === "queued");
-        if (!hasRunning && statusFilter !== "all") {
-          // No hay jobs en ejecución y estamos filtrando, no necesitamos polling
+        if (!hasRunning) {
+          // No hay jobs en ejecución, no necesitamos polling
           return;
         }
         
-        // Iniciar polling solo si hay jobs en ejecución o estamos viendo todos
+        // Iniciar polling solo si hay jobs en ejecución
         intervalRef.current = setInterval(() => {
           const currentToken = getToken();
           if (!currentToken) {
@@ -78,9 +78,9 @@ export default function ScansPage() {
             .then((updatedData) => {
               setJobs(updatedData);
               
-              // Si no hay jobs en ejecución y estamos filtrando, detener polling
+              // Si no hay jobs en ejecución, detener polling (independientemente del filtro)
               const stillHasRunning = updatedData.some((job) => job.status === "running" || job.status === "queued");
-              if (!stillHasRunning && statusFilter !== "all") {
+              if (!stillHasRunning) {
                 if (intervalRef.current) {
                   clearInterval(intervalRef.current);
                   intervalRef.current = null;

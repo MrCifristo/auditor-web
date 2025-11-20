@@ -43,6 +43,9 @@ services:
       - ./backend:/app/backend  # Hot reload para Rol A
       - ./reports:/app/reports
       - /var/run/docker.sock:/var/run/docker.sock  # Para lanzar contenedores de ZAP/Nuclei
+    # Ejecutar como root temporalmente para desarrollo (necesario para acceso a docker.sock)
+    # En producción, considerar usar docker-in-docker o un socket con permisos adecuados
+    user: "0:0"  # root:root para acceso al socket de Docker
     depends_on:
       db:
         condition: service_healthy

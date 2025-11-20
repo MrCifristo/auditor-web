@@ -66,9 +66,10 @@ async def create_job(
     db.refresh(new_job)
     
     # Iniciar escaneo en background
+    # IMPORTANTE: No pasar db como parámetro porque la sesión se cierra
+    # cuando termina el request. La background task creará su propia sesión.
     background_tasks.add_task(
         ScannerService.execute_scan,
-        db=db,
         job_id=str(new_job.id),
         target_url=target.url,
         tools=job_data.tools_used
