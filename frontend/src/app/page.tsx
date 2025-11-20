@@ -1,18 +1,32 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-center font-mono text-sm">
-        <h1 className="text-4xl font-bold text-center mb-4">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-6">
+      <div className="w-full max-w-2xl rounded-2xl border border-gray-200 bg-white p-10 text-center shadow">
+        <h1 className="mb-4 text-4xl font-bold text-gray-900">
           🛡️ Auditor Web de Seguridad
         </h1>
-        <p className="text-center text-gray-600">
-          Plataforma para auditorías de seguridad web
+        <p className="text-gray-600">
+          Plataforma para ejecutar auditorías básicas de seguridad sobre sitios
+          autorizados, visualizar métricas y generar reportes accionables.
         </p>
-        <p className="text-center text-sm text-gray-400 mt-4">
-          Frontend en construcción...
-        </p>
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <Link
+            href="/login"
+            className="rounded-md bg-blue-600 px-6 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            Iniciar sesión
+          </Link>
+          <Link
+            href="/register"
+            className="rounded-md border border-blue-600 px-6 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50"
+          >
+            Crear cuenta
+          </Link>
+        </div>
       </div>
     </main>
-  )
+  );
 }
 

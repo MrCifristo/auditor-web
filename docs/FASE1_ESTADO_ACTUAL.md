@@ -1,7 +1,8 @@
 # 📋 Fase 1 - Estado Actual y Guía de Continuidad
 
 **Fecha de creación:** 2024-11-19  
-**Estado:** Estructura base completada, autenticación pendiente
+**Última actualización:** 2025-11-20  
+**Estado:** Fases 0, 1 y 2 completadas (infraestructura + autenticación + targets/jobs)
 
 ---
 
@@ -64,55 +65,63 @@ docker compose exec api alembic downgrade -1
 
 **Ubicación:** `backend/alembic/`
 
-### 3. Estructura de Seguridad (Placeholders)
+### 3. Seguridad y autenticación completas
 
-Archivos creados con TODOs y documentación:
+- **`app/security/hashing.py`**  
+  - `hash_password`: usa Passlib + bcrypt (valida longitud ≤72 bytes).  
+  - `verify_password`: compara contraseña vs hash.
 
-- **`app/security/hashing.py`**: Placeholder para hash/verificación de contraseñas
-- **`app/security/jwt.py`**: Placeholder para creación/verificación de tokens JWT
-- **`app/security/dependencies.py`**: Placeholder para dependencias de FastAPI (`get_current_user`)
+- **`app/security/jwt.py`**  
+  - `create_access_token`, `verify_token`, `get_user_from_token`.  
+  - Firmas con `settings.jwt_secret`, expiración configurable.
 
-**Estado:** Estructura lista, implementación pendiente
+- **`app/security/dependencies.py`**  
+  - `get_current_user`: valida token, carga usuario, maneja 401.  
+  - `get_current_active_user`: placeholder para checks adicionales.
 
-**Ubicación:** `backend/app/security/`
+- **`app/schemas/user.py` / `token.py`**  
+  - `UserCreate` (con política de contraseñas estricta), `UserLogin`, `UserResponse`.  
+  - `Token`, `TokenData`.
 
-### 4. Estructura de Schemas (Placeholders)
+- **`app/routers/auth.py`**  
+  - `POST /auth/register`, `POST /auth/login`, `GET /auth/me`.  
+  - Maneja errores de hash, email duplicado y credenciales inválidas.
 
-Archivos creados con TODOs y documentación:
+- **`app/main.py`**  
+  - Incluye router de auth y health checks (`/health`, `/health/db`).
 
-- **`app/schemas/user.py`**: Placeholder para schemas de usuario (UserCreate, UserLogin, UserResponse)
-- **`app/schemas/token.py`**: Placeholder para schemas de token (Token, TokenData)
+### 4. Targets y Jobs (Fase 2)
 
-**Estado:** Estructura lista, implementación pendiente
+- **Schemas**:
+  - `app/schemas/target.py`: `TargetCreate`, `TargetResponse`.
+  - `app/schemas/job.py`: `JobCreate`, `JobResponse` (enum `JobStatus`).
+  - `app/schemas/finding.py`: `FindingResponse`.
 
-**Ubicación:** `backend/app/schemas/`
+- **Validadores de URL** (`app/utils/url_validators.py`):
+  - Normaliza URLs y bloquea `localhost`, IPs privadas/reservadas.
+  - Verifica whitelist `settings.allowed_scan_domains`.
 
-### 5. Estructura de Routers (Placeholders)
+- **Routers**:
+  - `app/routers/targets.py`: CRUD protegido (`POST/GET/GET/{id}/DELETE`).  
+    - Normaliza URL antes de guardar.  
+    - Solo permite targets del usuario autenticado.
+  - `app/routers/jobs.py`: `POST /jobs`, `GET /jobs`, `GET /jobs/{id}`, `GET /jobs/{id}/findings`.
+    - Valida que el target sea del usuario y que las herramientas estén en la lista (`zap`, `nuclei`, `sslyze`).
 
-Archivos creados con TODOs y documentación:
-
-- **`app/routers/auth.py`**: Placeholder para endpoints de autenticación:
-  - `POST /auth/register`
-  - `POST /auth/login`
-  - `GET /auth/me`
-
-**Estado:** Estructura lista, implementación pendiente
-
-**Ubicación:** `backend/app/routers/`
-
-### 6. Mejoras en main.py
-
-- Endpoint `/health/db` agregado para verificar conexión a BD
-- Estructura preparada para integrar router de auth (comentado)
-- Imports necesarios agregados
-
-**Ubicación:** `backend/app/main.py`
+- **`app/main.py`** ahora registra `auth`, `targets` y `jobs`.
 
 ---
 
 ## ❌ Lo que falta implementar (Autenticación)
 
-### Prioridad 1: Módulo de Hashing
+### Resumen Fases Completadas
+
+| Fase | Estado | Detalles |
+|------|--------|----------|
+| Fase 0 | ✅ | Infraestructura Docker, scripts `dev_bootstrap.sh` (con migraciones automáticas), variables de entorno documentadas. |
+| Fase 1 | ✅ | Autenticación completa (hash, JWT, `/auth/register-login-me`), frontend básico de registro/login/dashboard, pruebas documentadas. |
+| Fase 2 | ✅ | CRUD de Targets y Jobs, validaciones de URL, endpoints `/targets` y `/jobs`, documentación de pruebas. |
+| Fase 3 | ⏳ | (próximo) Integración con herramientas de seguridad (ZAP, Nuclei, SSLyze). |
 
 **Archivo:** `backend/app/security/hashing.py`
 
@@ -217,18 +226,6 @@ Archivos creados con TODOs y documentación:
 - Ejemplo en el archivo: `backend/app/routers/auth.py`
 - FastAPI Security: https://fastapi.tiangolo.com/tutorial/security/
 
-### Prioridad 6: Integración en main.py
-
-**Archivo:** `backend/app/main.py`
-
-**Descomentar y ajustar:**
-```python
-from app.routers import auth
-app.include_router(auth.router)
-```
-
----
-
 ## 📁 Estructura de Archivos Actual
 
 ```
@@ -248,20 +245,25 @@ backend/
 │   │   ├── job.py                 ✅ Modelo Job completo
 │   │   └── finding.py             ✅ Modelo Finding completo
 │   ├── schemas/
-│   │   ├── __init__.py            ✅ Vacío
-│   │   ├── user.py                ⚠️  Placeholder con TODOs
-│   │   └── token.py               ⚠️  Placeholder con TODOs
+│   │   ├── __init__.py
+│   │   ├── user.py
+│   │   ├── token.py
+│   │   ├── target.py
+│   │   ├── job.py
+│   │   └── finding.py
 │   ├── security/
-│   │   ├── __init__.py            ✅ Vacío
-│   │   ├── hashing.py             ⚠️  Placeholder con TODOs
-│   │   ├── jwt.py                 ⚠️  Placeholder con TODOs
-│   │   └── dependencies.py       ⚠️  Placeholder con TODOs
+│   │   ├── __init__.py
+│   │   ├── hashing.py
+│   │   ├── jwt.py
+│   │   └── dependencies.py
 │   ├── routers/
-│   │   ├── __init__.py            ✅ Vacío
-│   │   └── auth.py                ⚠️  Placeholder con TODOs
+│   │   ├── __init__.py
+│   │   ├── auth.py
+│   │   ├── targets.py
+│   │   └── jobs.py
 │   ├── config.py                  ✅ Configuración completa
 │   ├── database.py                ✅ SQLAlchemy configurado
-│   └── main.py                    ✅ Base + /health/db
+│   └── main.py                    ✅ `/health`, `/health/db`, routers auth/targets/jobs
 └── requirements.txt               ✅ Todas las dependencias
 
 ✅ = Completado
@@ -270,9 +272,21 @@ backend/
 
 ---
 
-## 🚀 Cómo continuar con la implementación
+## 🚀 Próximos pasos (Fase 3 y Frontend)
 
-### Paso 1: Ejecutar migración inicial
+1. **Integración de herramientas** (Fase 3):
+   - `services/scanner_service.py`: ejecutar contenedores Docker (ZAP/Nuclei/SSLyze) con timeouts.
+   - `services/scanners/*.py`: parsear outputs y guardar findings normalizados.
+   - Actualizar `jobs.status` a `running/done/failed`, guardar logs/resultados.
+
+2. **Frontend Targets/Jobs**:
+   - Diseñar pantallas para crear/listar targets y jobs (con filtros y estado).
+   - Consumir los nuevos endpoints (`/targets`, `/jobs`).
+   - Mostrar hallazgos por job (aunque inicialmente estén vacíos).
+
+3. **Documentación**:
+   - Mantener este doc actualizado (Fase 2 completada).
+   - Crear guías de prueba para endpoints de targets/jobs (curl + UI).
 
 Antes de implementar autenticación, asegúrate de que las tablas estén creadas:
 
@@ -285,28 +299,34 @@ cd backend
 alembic upgrade head
 ```
 
-### Paso 2: Orden de implementación recomendado
-
-1. **Implementar `security/hashing.py`** (más simple, no depende de nada)
-2. **Implementar `security/jwt.py`** (depende de settings, pero no de otros módulos)
-3. **Implementar `schemas/user.py` y `schemas/token.py`** (depende de models)
-4. **Implementar `security/dependencies.py`** (depende de jwt y database)
-5. **Implementar `routers/auth.py`** (depende de todo lo anterior)
-6. **Integrar en `main.py`** (descomentar include_router)
-
-### Paso 3: Probar cada componente
-
-Después de implementar cada módulo, probar:
+### Recomendaciones para pruebas manuales
 
 ```bash
-# Probar hashing
-python -c "from app.security.hashing import hash_password, verify_password; h=hash_password('test'); print(verify_password('test', h))"
+# Obtener token
+TOKEN=$(curl -s -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"milton@test.com","password":"Milton1234!"}' | jq -r '.access_token')
 
-# Probar JWT
-python -c "from app.security.jwt import create_access_token; print(create_access_token({'sub': 'test-user-id'}))"
+# Crear target
+curl -X POST http://localhost:8000/targets \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://demo-target.com"}'
 
-# Probar endpoints (después de implementar router)
-curl -X POST http://localhost:8000/auth/register -H "Content-Type: application/json" -d '{"email":"test@example.com","password":"test1234"}'
+# Listar targets
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/targets
+
+# Crear job
+curl -X POST http://localhost:8000/jobs \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"target_id":"<TARGET_ID>","tools":["zap","nuclei"]}'
+
+# Listar jobs
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/jobs
+
+# Hallazgos de un job
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/jobs/<JOB_ID>/findings
 ```
 
 ---
@@ -344,26 +364,6 @@ curl -X POST http://localhost:8000/auth/register -H "Content-Type: application/j
 
 ---
 
-## 🧪 Testing Recomendado
-
-Una vez implementada la autenticación, probar:
-
-1. **Registro de usuario:**
-   - Email válido
-   - Email duplicado (debe fallar)
-   - Password muy corto (debe fallar)
-
-2. **Login:**
-   - Credenciales válidas (debe retornar token)
-   - Credenciales inválidas (debe fallar)
-
-3. **Endpoint protegido:**
-   - Sin token (debe fallar con 401)
-   - Token inválido (debe fallar con 401)
-   - Token válido (debe retornar datos)
-
----
-
 ## 📝 Checklist para Implementación
 
 - [ ] Implementar `security/hashing.py`
@@ -380,6 +380,76 @@ Una vez implementada la autenticación, probar:
 
 ---
 
-**Última actualización:** 2024-11-19  
-**Próximo paso:** Implementar módulo de hashing (`backend/app/security/hashing.py`)
+## 🧪 Guía de pruebas (actualizado)
+
+### 1. Ejecutar migraciones
+
+```bash
+docker compose exec api alembic upgrade head
+```
+
+### 2. Registrar usuario
+
+```bash
+curl -X POST http://localhost:8000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"demo@example.com","password":"Demo12345","role":"user"}'
+```
+
+### 3. Iniciar sesión
+
+```bash
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"demo@example.com","password":"Demo12345"}'
+```
+
+La respuesta incluirá `access_token`. Guárdalo en una variable:
+
+```bash
+TOKEN=$(curl ... | jq -r '.access_token')
+```
+
+### 4. Obtener usuario actual
+
+```bash
+curl http://localhost:8000/auth/me \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### 5. Verificar en la base de datos
+
+```bash
+docker compose exec db psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c "SELECT id,email,role FROM users;"
+```
+
+> Nota: el `password_hash` está almacenado con bcrypt (nunca texto plano).
+
+### 6. Probar desde el frontend (Next.js)
+
+1. Levanta todo con `./scripts/dev_bootstrap.sh` (reconstruye, levanta contenedores, corre migraciones).
+2. Accede a `http://localhost:8080` (proxy) o `http://localhost:3000` (Next.js directo).
+3. Flujo visual:
+   - Landing con CTA “Iniciar sesión / Crear cuenta”.
+   - `/register`: formulario con validaciones (contraseña ≥8 chars, mayúsc/minúsc/número/símbolo).
+   - `/login`: guarda token en `localStorage` y redirige a `/dashboard`.
+   - `/dashboard`: muestra datos del usuario y botón “Cerrar sesión”.
+4. Próximas pantallas (en desarrollo): administración de targets/jobs desde la UI.
+
+### 7. Conectarse vía pgAdmin / DBeaver
+
+Usa los valores de `env/.env.dev`:
+```
+Host: localhost
+Puerto: 5432
+Usuario: POSTGRES_USER
+Contraseña: POSTGRES_PASSWORD
+Base de datos: POSTGRES_DB
+```
+
+En DBeaver/pgAdmin crea una conexión PostgreSQL con esos datos (SSL desactivado para entorno local) y podrás consultar las tablas `users`, `targets`, `jobs`, `findings`.
+
+---
+
+**Próximo paso:** Fase 3 (integración de herramientas de escaneo) + frontend de Targets/Jobs.
 

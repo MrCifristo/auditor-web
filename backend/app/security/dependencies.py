@@ -28,53 +28,62 @@ Referencias:
 """
 
 from typing import Optional
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.orm import Session
 
-# TODO: Importar dependencias necesarias
-# from sqlalchemy.orm import Session
-# from app.database import get_db
-# from app.models.user import User
-# from app.security.jwt import verify_token, get_user_from_token
+from app.database import get_db
+from app.models.user import User
+from app.security.jwt import verify_token
 
 # Configurar HTTPBearer para extraer token del header Authorization
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
-# TODO: Implementar get_current_user()
-# async def get_current_user(
-#     credentials: HTTPAuthorizationCredentials = Depends(security),
-#     db: Session = Depends(get_db)
-# ) -> User:
-#     """
-#     Dependencia para obtener el usuario actual desde el token JWT
-#     
-#     Args:
-#         credentials: Credenciales HTTP con el token
-#         db: Sesión de base de datos
-#     
-#     Returns:
-#         Usuario autenticado
-#     
-#     Raises:
-#         HTTPException: Si el token es inválido o el usuario no existe
-#     """
-#     pass
+INVALID_CREDENTIALS_EXCEPTION = HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="Credenciales inválidas o token expirado",
+    headers={"WWW-Authenticate": "Bearer"},
+)
 
-# TODO: Implementar get_current_active_user()
-# async def get_current_active_user(
-#     current_user: User = Depends(get_current_user)
-# ) -> User:
-#     """
-#     Dependencia para obtener el usuario actual y verificar que esté activo
-#     
-#     Args:
-#         current_user: Usuario obtenido de get_current_user
-#     
-#     Returns:
-#         Usuario activo
-#     
-#     Raises:
-#         HTTPException: Si el usuario no está activo
-#     """
-#     pass
+
+def get_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: Session = Depends(get_db),
+) -> User:
+    """
+    Dependencia para obtener el usuario actual desde el token JWT.
+
+    Args:
+        credentials: Credenciales HTTP (Authorization: Bearer <token>)
+        db: Sesión de base de datos
+
+    Returns:
+        Instancia de User autenticado
+    """
+    if credentials is None:
+        raise INVALID_CREDENTIALS_EXCEPTION
+
+    token = credentials.credentials
+    payload = verify_token(token)
+    if payload is None:
+        raise INVALID_CREDENTIALS_EXCEPTION
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise INVALID_CREDENTIALS_EXCEPTION
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise INVALID_CREDENTIALS_EXCEPTION
+
+    return user
+
+
+def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
+    """
+    Dependencia para obtener el usuario actual y verificar que esté activo.
+    (Por ahora, simplemente retorna el usuario. Se puede extender con flag is_active.)
+    """
+    return current_user
 

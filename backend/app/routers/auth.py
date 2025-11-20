@@ -46,44 +46,72 @@ Referencias:
 - FastAPI Security: https://fastapi.tiangolo.com/tutorial/security/
 """
 
-from fastapi import APIRouter
+from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, status
 
-# TODO: Crear router
-# router = APIRouter(prefix="/auth", tags=["auth"])
+from app.database import get_db
+from app.models.user import User, UserRole
+from app.schemas.user import UserCreate, UserLogin, UserResponse
+from app.schemas.token import Token
+from app.security.hashing import hash_password, verify_password
+from app.security.jwt import create_access_token
+from app.security.dependencies import get_current_user
 
-# TODO: Implementar POST /auth/register
-# @router.post("/register", response_model=UserResponse)
-# async def register(...):
-#     """
-#     Registrar un nuevo usuario
-#     
-#     - Validar email y password
-#     - Hashear password
-#     - Crear usuario en BD
-#     - Retornar usuario (sin password_hash)
-#     """
-#     pass
+router = APIRouter(prefix="/auth", tags=["auth"])
 
-# TODO: Implementar POST /auth/login
-# @router.post("/login", response_model=Token)
-# async def login(...):
-#     """
-#     Iniciar sesión y obtener token JWT
-#     
-#     - Verificar credenciales
-#     - Generar token JWT
-#     - Retornar token
-#     """
-#     pass
 
-# TODO: Implementar GET /auth/me
-# @router.get("/me", response_model=UserResponse)
-# async def get_me(...):
-#     """
-#     Obtener información del usuario actual
-#     
-#     - Obtener usuario desde token (usando get_current_user)
-#     - Retornar datos del usuario
-#     """
-#     pass
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+def register(user_data: UserCreate, db: Session = Depends(get_db)):
+    """
+    Registrar un nuevo usuario.
+    """
+    existing_user = db.query(User).filter(User.email == user_data.email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El email ya está registrado",
+        )
+
+    try:
+        hashed_pw = hash_password(user_data.password)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    new_user = User(
+        email=user_data.email,
+        password_hash=hashed_pw,
+        role=user_data.role or UserRole.USER,
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
+
+
+@router.post("/login", response_model=Token)
+def login(user_data: UserLogin, db: Session = Depends(get_db)):
+    """
+    Iniciar sesión y obtener un token JWT.
+    """
+    user = db.query(User).filter(User.email == user_data.email).first()
+    if not user or not verify_password(user_data.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenciales inválidas",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token = create_access_token({"sub": str(user.id), "email": user.email})
+    return Token(access_token=token)
+
+
+@router.get("/me", response_model=UserResponse)
+def get_me(current_user: User = Depends(get_current_user)):
+    """
+    Obtener la información del usuario autenticado.
+    """
+    return current_user
 

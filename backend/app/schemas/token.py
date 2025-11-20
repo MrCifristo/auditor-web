@@ -24,17 +24,21 @@ Referencias:
 - Documentación del proyecto: docs/ROLE_A_BACKEND_SECURITY.md
 """
 
+from typing import Optional
+
 from pydantic import BaseModel
 
-# TODO: Implementar Token
-# class Token(BaseModel):
-#     """Schema para respuesta de token JWT"""
-#     access_token: str
-#     token_type: str = "bearer"
 
-# TODO: Implementar TokenData (opcional)
-# class TokenData(BaseModel):
-#     """Schema para datos del token"""
-#     user_id: Optional[str] = None
-#     email: Optional[str] = None
+class Token(BaseModel):
+    """Schema para respuesta de token JWT."""
+
+    access_token: str
+    token_type: str = "bearer"
+
+
+class TokenData(BaseModel):
+    """Información contenida en el token JWT."""
+
+    user_id: Optional[str] = None
+    email: Optional[str] = None
 

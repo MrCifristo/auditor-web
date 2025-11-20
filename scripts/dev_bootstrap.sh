@@ -127,6 +127,23 @@ else
     docker-compose -f docker-compose.dev.yml --env-file "$ENV_FILE" ps
 fi
 
+# Ejecutar migraciones de base de datos
+echo ""
+echo "📦 Ejecutando migraciones de base de datos (alembic upgrade head)..."
+MIGRATION_COMMAND='cd /app/backend && ALEMBIC_CONFIG=/app/backend/alembic.ini alembic upgrade head'
+if docker compose version &> /dev/null; then
+    if ! docker compose -f docker-compose.dev.yml --env-file "$ENV_FILE" exec api bash -lc "$MIGRATION_COMMAND"; then
+        echo "❌ Error al ejecutar las migraciones de base de datos"
+        exit 1
+    fi
+else
+    if ! docker-compose -f docker-compose.dev.yml --env-file "$ENV_FILE" exec api bash -lc "$MIGRATION_COMMAND"; then
+        echo "❌ Error al ejecutar las migraciones de base de datos"
+        exit 1
+    fi
+fi
+echo "✅ Migraciones ejecutadas correctamente"
+
 echo ""
 echo "✅ Bootstrap completado!"
 echo ""

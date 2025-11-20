@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.config import settings
+from app.routers import auth, targets, jobs
 
 app = FastAPI(
     title="Auditor Web API",
@@ -58,9 +59,9 @@ async def health_check_db(db: Session = Depends(get_db)):
         return {"status": "unhealthy", "database": "disconnected", "error": str(e)}
 
 
-# TODO: Integrar router de autenticación cuando esté implementado
-# from app.routers import auth
-# app.include_router(auth.router)
+app.include_router(auth.router)
+app.include_router(targets.router)
+app.include_router(jobs.router)
 
 
 if __name__ == "__main__":

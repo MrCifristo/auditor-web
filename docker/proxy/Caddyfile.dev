@@ -6,11 +6,19 @@
 :8080 {
   encode gzip
 
-  @api path /api* /docs* /openapi.json
-  handle @api {
+  # Rutas hacia el backend (API)
+  handle_path /api/* {
+    uri strip_prefix /api
     reverse_proxy api:8000
   }
 
+  # Accesos directos a /docs y /openapi.json (útil en dev)
+  @docs path /docs* /openapi.json
+  handle @docs {
+    reverse_proxy api:8000
+  }
+
+  # Resto del tráfico → frontend Next.js
   handle {
     reverse_proxy frontend:3000
   }
