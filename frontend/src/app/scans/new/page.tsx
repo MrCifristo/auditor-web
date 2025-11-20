@@ -48,6 +48,21 @@ export default function NewScanPage() {
     fetchTargets();
   }, [router]);
 
+  const normalizeUrl = (url: string): string => {
+    // Eliminar espacios en blanco
+    url = url.trim();
+    
+    // Si no tiene esquema, agregar https://
+    if (!url.match(/^https?:\/\//i)) {
+      url = `https://${url}`;
+    }
+    
+    // Eliminar barra final si existe
+    url = url.replace(/\/+$/, "");
+    
+    return url;
+  };
+
   const handleCreateTarget = async (e?: FormEvent | MouseEvent<HTMLButtonElement>) => {
     if (e) {
       e.preventDefault();
@@ -70,10 +85,12 @@ export default function NewScanPage() {
     }
 
     try {
+      // Normalizar la URL antes de enviarla
+      const normalizedUrl = normalizeUrl(newTargetUrl);
       const newTarget = await apiFetch<Target>("/targets", {
         method: "POST",
         token,
-        body: JSON.stringify({ url: newTargetUrl }),
+        body: JSON.stringify({ url: normalizedUrl }),
       });
       setTargets([...targets, newTarget]);
       setSelectedTargetId(newTarget.id);

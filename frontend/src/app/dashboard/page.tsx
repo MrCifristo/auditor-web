@@ -90,7 +90,7 @@ export default function DashboardPage() {
     <DashboardLayout>
       <div className="space-y-8">
         {/* Header */}
-        <div>
+          <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard de Seguridad</h1>
           <p className="mt-2 text-sm text-gray-600">
             Resumen de tus escaneos y hallazgos de seguridad

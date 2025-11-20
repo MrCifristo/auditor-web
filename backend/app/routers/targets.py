@@ -4,52 +4,14 @@ Router de Targets
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-from urllib.parse import urlparse
 from app.database import get_db
 from app.models.target import Target
 from app.models.user import User
 from app.schemas.target import TargetCreate, TargetResponse, TargetUpdate
 from app.security.dependencies import get_current_user
-from app.config import settings
+from app.utils.url_validators import validate_target_url
 
 router = APIRouter(prefix="/targets", tags=["targets"])
-
-
-def validate_url(url: str) -> bool:
-    """
-    Valida que la URL esté permitida para escaneo
-    
-    Args:
-        url: URL a validar
-    
-    Returns:
-        True si la URL es válida, False en caso contrario
-    """
-    try:
-        parsed = urlparse(url)
-        
-        # Verificar que tenga esquema válido
-        if parsed.scheme not in ["http", "https"]:
-            return False
-        
-        # Obtener lista de dominios permitidos
-        allowed_domains = [d.strip() for d in settings.allowed_scan_domains.split(",")]
-        
-        # En desarrollo, permitir localhost y 127.0.0.1
-        if parsed.hostname in ["localhost", "127.0.0.1"]:
-            return True
-        
-        # Verificar si el dominio está en la lista permitida
-        if parsed.hostname in allowed_domains:
-            return True
-        
-        # Si la lista contiene "*", permitir cualquier dominio (solo en dev)
-        if "*" in allowed_domains:
-            return True
-        
-        return False
-    except Exception:
-        return False
 
 
 @router.post("", response_model=TargetResponse, status_code=status.HTTP_201_CREATED)
@@ -64,12 +26,9 @@ async def create_target(
     - Validar URL
     - Crear target asociado al usuario
     """
-    # Validar URL
-    if not validate_url(target_data.url):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="URL no permitida para escaneo. Verifique que esté en la lista de dominios permitidos."
-        )
+    # Validar URL usando la función centralizada de validación
+    # Esta función lanza HTTPException si la URL no es válida
+    validate_target_url(target_data.url)
     
     # Crear target
     new_target = Target(

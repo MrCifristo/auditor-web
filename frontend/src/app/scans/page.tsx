@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
@@ -30,6 +30,9 @@ export default function ScansPage() {
   const [error, setError] = useState<string | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  
+  // Usar refs para mantener referencias a los intervalos
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const token = getToken();
@@ -38,41 +41,72 @@ export default function ScansPage() {
       return;
     }
 
+    // Limpiar cualquier polling anterior
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
     const fetchJobs = async () => {
       try {
         const params = statusFilter !== "all" ? `?status_filter=${statusFilter}` : "";
         const data = await apiFetch<Job[]>(`/jobs${params}`, { token });
         setJobs(data);
         setError(null);
+        setLoading(false);
+        
+        // Solo continuar polling si hay jobs en ejecución o estamos viendo todos
+        const hasRunning = data.some((job) => job.status === "running" || job.status === "queued");
+        if (!hasRunning && statusFilter !== "all") {
+          // No hay jobs en ejecución y estamos filtrando, no necesitamos polling
+          return;
+        }
+        
+        // Iniciar polling solo si hay jobs en ejecución o estamos viendo todos
+        intervalRef.current = setInterval(() => {
+          const currentToken = getToken();
+          if (!currentToken) {
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+              intervalRef.current = null;
+            }
+            return;
+          }
+          
+          const currentParams = statusFilter !== "all" ? `?status_filter=${statusFilter}` : "";
+          apiFetch<Job[]>(`/jobs${currentParams}`, { token: currentToken })
+            .then((updatedData) => {
+              setJobs(updatedData);
+              
+              // Si no hay jobs en ejecución y estamos filtrando, detener polling
+              const stillHasRunning = updatedData.some((job) => job.status === "running" || job.status === "queued");
+              if (!stillHasRunning && statusFilter !== "all") {
+                if (intervalRef.current) {
+                  clearInterval(intervalRef.current);
+                  intervalRef.current = null;
+                }
+              }
+            })
+            .catch(() => {
+              // Silently fail on polling errors
+            });
+        }, 10000); // Actualizar cada 10 segundos (más espaciado que en detalle)
       } catch (err) {
         setError((err as Error).message || "Error al cargar escaneos");
         clearToken();
         router.replace("/login");
-      } finally {
         setLoading(false);
       }
     };
 
     fetchJobs();
 
-    // Polling para actualizar jobs en ejecución
-    const interval = setInterval(() => {
-      const token = getToken();
-      if (!token) return;
-      
-      apiFetch<Job[]>(`/jobs${statusFilter !== "all" ? `?status_filter=${statusFilter}` : ""}`, { token })
-        .then((data) => {
-          const hasRunning = data.some((job) => job.status === "running" || job.status === "queued");
-          if (hasRunning || statusFilter === "all") {
-            setJobs(data);
-          }
-        })
-        .catch(() => {
-          // Silently fail on polling errors
-        });
-    }, 5000); // Actualizar cada 5 segundos
-
-    return () => clearInterval(interval);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [router, statusFilter]);
 
   const formatDate = (dateString: string | null) => {

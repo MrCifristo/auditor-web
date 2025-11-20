@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
@@ -53,12 +53,26 @@ export default function ScanDetailPage() {
   const [target, setTarget] = useState<Target | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [severityFilter, setSeverityFilter] = useState<string>("all");
+  
+  // Usar refs para mantener referencias a los intervalos y timeouts
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const token = getToken();
     if (!token) {
       router.replace("/login");
       return;
+    }
+
+    // Limpiar cualquier polling anterior
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
 
     const fetchData = async () => {
@@ -69,6 +83,7 @@ export default function ScanDetailPage() {
         ]);
 
         setJob(jobData);
+        setFindings(findingsData);
 
         // Fetch target details
         try {
@@ -78,46 +93,65 @@ export default function ScanDetailPage() {
           console.error("Error fetching target:", err);
         }
 
-        setFindings(findingsData);
         setError(null);
+        setLoading(false);
+        
+        // Solo iniciar polling si el job está en ejecución
+        if (jobData.status !== "done" && jobData.status !== "failed") {
+          // Iniciar polling después de un pequeño delay
+          timeoutRef.current = setTimeout(() => {
+            intervalRef.current = setInterval(() => {
+              const currentToken = getToken();
+              if (!currentToken) {
+                if (intervalRef.current) {
+                  clearInterval(intervalRef.current);
+                  intervalRef.current = null;
+                }
+                return;
+              }
+              
+              Promise.all([
+                apiFetch<Job>(`/jobs/${jobId}`, { token: currentToken }),
+                apiFetch<Finding[]>(`/jobs/${jobId}/findings`, { token: currentToken }),
+              ])
+                .then(([updatedJobData, updatedFindingsData]) => {
+                  setJob(updatedJobData);
+                  setFindings(updatedFindingsData);
+                  
+                  // Si el job terminó, detener el polling
+                  if (updatedJobData.status === "done" || updatedJobData.status === "failed") {
+                    if (intervalRef.current) {
+                      clearInterval(intervalRef.current);
+                      intervalRef.current = null;
+                    }
+                  }
+                })
+                .catch(() => {
+                  // Silently fail on polling errors
+                });
+            }, 5000); // Actualizar cada 5 segundos
+          }, 2000); // Esperar 2 segundos antes de iniciar polling
+        }
       } catch (err) {
         setError((err as Error).message || "Error al cargar escaneo");
         clearToken();
         router.replace("/login");
-      } finally {
         setLoading(false);
       }
     };
 
     fetchData();
 
-    // Polling para actualizar job en ejecución
-    const interval = setInterval(() => {
-      const token = getToken();
-      if (!token) return;
-      
-      Promise.all([
-        apiFetch<Job>(`/jobs/${jobId}`, { token }),
-        apiFetch<Finding[]>(`/jobs/${jobId}/findings`, { token }),
-      ])
-        .then(([jobData, findingsData]) => {
-          setJob(jobData);
-          setFindings(findingsData);
-          // Solo seguir polling si el job está en ejecución
-          if (jobData.status !== "done" && jobData.status !== "failed") {
-            try {
-              apiFetch<Target>(`/targets/${jobData.target_id}`, { token }).then(setTarget).catch(() => {});
-            } catch (err) {
-              // Silently fail
-            }
-          }
-        })
-        .catch(() => {
-          // Silently fail on polling errors
-        });
-    }, 3000); // Actualizar cada 3 segundos
-
-    return () => clearInterval(interval);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
   }, [router, jobId]);
 
   const filteredFindings =
