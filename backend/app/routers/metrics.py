@@ -39,7 +39,7 @@ async def get_metrics_summary(
     total_jobs = db.query(Job).filter(Job.user_id == current_user.id).count()
     
     # Total de findings
-    total_findings = db.query(Finding).join(Job).filter(
+    total_findings = db.query(Finding).join(Job, Finding.job_id == Job.id).filter(
         Job.user_id == current_user.id
     ).count()
     
@@ -47,7 +47,7 @@ async def get_metrics_summary(
     findings_by_severity = db.query(
         Finding.severity,
         func.count(Finding.id).label("count")
-    ).join(Job).filter(
+    ).join(Job, Finding.job_id == Job.id).filter(
         Job.user_id == current_user.id
     ).group_by(Finding.severity).all()
     
@@ -59,7 +59,7 @@ async def get_metrics_summary(
     findings_by_tool = db.query(
         Finding.tool,
         func.count(Finding.id).label("count")
-    ).join(Job).filter(
+    ).join(Job, Finding.job_id == Job.id).filter(
         Job.user_id == current_user.id
     ).group_by(Finding.tool).all()
     
@@ -84,7 +84,7 @@ async def get_metrics_by_severity(
     results = db.query(
         Finding.severity,
         func.count(Finding.id).label("count")
-    ).join(Job).filter(
+    ).join(Job, Finding.job_id == Job.id).filter(
         Job.user_id == current_user.id
     ).group_by(Finding.severity).all()
     
@@ -113,7 +113,7 @@ async def get_metrics_by_tool(
     results = db.query(
         Finding.tool,
         func.count(Finding.id).label("count")
-    ).join(Job).filter(
+    ).join(Job, Finding.job_id == Job.id).filter(
         Job.user_id == current_user.id
     ).group_by(Finding.tool).all()
     
@@ -152,7 +152,7 @@ async def get_metrics_timeline(
     findings_by_date = db.query(
         func.date(Finding.created_at).label("date"),
         func.count(Finding.id).label("count")
-    ).join(Job).filter(
+    ).join(Job, Finding.job_id == Job.id).filter(
         and_(
             Job.user_id == current_user.id,
             Finding.created_at >= start_date
@@ -191,7 +191,7 @@ async def get_top_targets(
         Target.id,
         Target.url,
         func.count(Finding.id).label("count")
-    ).join(Job).join(Finding).filter(
+    ).join(Job, Target.id == Job.target_id).join(Finding, Job.id == Finding.job_id).filter(
         Job.user_id == current_user.id
     ).group_by(Target.id, Target.url).order_by(
         func.count(Finding.id).desc()

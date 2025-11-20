@@ -1,5 +1,4 @@
 import { ReactNode } from "react";
-import clsx from "clsx";
 
 interface CardProps {
   title?: string;
@@ -11,10 +10,7 @@ interface CardProps {
 export function Card({ title, description, children, className }: CardProps) {
   return (
     <div
-      className={clsx(
-        "w-full rounded-2xl border border-gray-100/70 bg-white p-8 shadow-lg shadow-gray-200/40",
-        className
-      )}
+      className={`w-full rounded-2xl border border-gray-100/70 bg-white p-8 shadow-lg shadow-gray-200/40 ${className || ""}`}
     >
       {(title || description) && (
         <header className="mb-6 space-y-1 text-center">

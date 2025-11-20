@@ -32,7 +32,8 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       saveToken(data.access_token);
-      router.push("/dashboard");
+      // Usar window.location para forzar una recarga completa y asegurar que el token se use
+      window.location.href = "/dashboard";
     } catch (err) {
       setError((err as Error).message || "Error al iniciar sesión");
     } finally {
