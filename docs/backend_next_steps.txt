@@ -1,0 +1,63 @@
+# Backend Next Steps Cheat Sheet
+
+## 1. Environment setup (sin editar JWT_SECRET en el archivo)
+cp env/.env.example env/.env.dev
+# Genera y guarda el secreto en un archivo ignorado por git
+python3 - <<'PY' > env/.jwt_secret
+import secrets
+print(secrets.token_hex(32), end='')
+PY
+# Exporta la variable de entorno (repite este export cuando abras una terminal nueva)
+export JWT_SECRET=$(cat env/.jwt_secret)
+
+## 2. Bring up the stack
+# Ensure Docker Desktop is running first and JWT_SECRET is exported.
+# (si abriste una terminal nueva: export JWT_SECRET=$(cat env/.jwt_secret))
+docker compose --env-file env/.env.dev -f docker-compose.dev.yml up -d db api frontend proxy
+# Optional: see container status
+docker compose --env-file env/.env.dev -f docker-compose.dev.yml ps
+
+## 3. Apply database migrations
+# Run this after the containers are healthy.
+docker compose --env-file env/.env.dev -f docker-compose.dev.yml exec api bash -lc "cd /app/backend && alembic upgrade head"
+
+## 4. Smoke tests & auth flow
+# Health checks
+curl http://localhost:8000/health
+curl http://localhost:8000/health/db
+
+# Register user
+curl -X POST http://localhost:8000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"test123456"}'
+
+# Login and capture the token
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"test123456"}'
+# Copy the access_token from the response
+
+# Use the token for protected endpoints
+TOKEN="paste_access_token_here"
+curl http://localhost:8000/auth/me -H "Authorization: Bearer $TOKEN"
+
+# Create a target
+curl -X POST http://localhost:8000/targets \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com"}'
+
+# Create a job for that target
+TARGET_ID="paste_target_id_here"
+curl -X POST http://localhost:8000/jobs \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"target_id":"'$TARGET_ID'","tools_used":["ZAP","Nuclei"]}'
+
+# List jobs and metrics
+curl http://localhost:8000/jobs -H "Authorization: Bearer $TOKEN"
+curl http://localhost:8000/metrics/summary -H "Authorization: Bearer $TOKEN"
+
+## 5. API docs
+open http://localhost:8000/docs
+# or through the proxy: http://localhost:8080/api/docs

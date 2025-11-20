@@ -1,40 +1,36 @@
+"""
+Schemas Pydantic para Jobs
+"""
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional, List
+from uuid import UUID
 
-from pydantic import BaseModel, UUID4, field_validator
+from pydantic import BaseModel, Field
 
 from app.models.job import JobStatus
 
-ALLOWED_TOOLS = {"zap", "nuclei", "sslyze"}
-
 
 class JobCreate(BaseModel):
-    target_id: UUID4
-    tools: List[str]
-
-    @field_validator("tools")
-    @classmethod
-    def validate_tools(cls, value: List[str]) -> List[str]:
-        if not value:
-            raise ValueError("Debes seleccionar al menos una herramienta.")
-        invalid = [tool for tool in value if tool not in ALLOWED_TOOLS]
-        if invalid:
-            raise ValueError(
-                f"Herramientas inválidas: {', '.join(invalid)}. "
-                f"Permitidas: {', '.join(sorted(ALLOWED_TOOLS))}."
-            )
-        return value
+    """Schema para crear un job"""
+    target_id: UUID = Field(..., description="ID del target a escanear")
+    tools_used: List[str] = Field(..., description="Lista de herramientas a usar", min_items=1)
 
 
 class JobResponse(BaseModel):
-    id: UUID4
-    target_id: UUID4
+    """Schema para respuesta de job"""
+    id: UUID
+    user_id: UUID
+    target_id: UUID
     status: JobStatus
     tools_used: Optional[List[str]] = None
     created_at: datetime
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
-
+    
     class Config:
         from_attributes = True
 
+
+class JobUpdate(BaseModel):
+    """Schema para actualizar job"""
+    status: Optional[JobStatus] = None

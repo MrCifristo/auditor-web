@@ -1,14 +1,16 @@
+"""
+Schemas Pydantic para Findings
+"""
 from datetime import datetime
+from pydantic import BaseModel
 from typing import Optional
-
-from pydantic import BaseModel, UUID4
-
 from app.models.finding import FindingSeverity
 
 
 class FindingResponse(BaseModel):
-    id: UUID4
-    job_id: UUID4
+    """Schema para respuesta de finding"""
+    id: str
+    job_id: str
     severity: FindingSeverity
     title: str
     description: Optional[str] = None
@@ -16,7 +18,7 @@ class FindingResponse(BaseModel):
     recommendation: Optional[str] = None
     tool: str
     created_at: datetime
-
+    
     class Config:
         from_attributes = True
 

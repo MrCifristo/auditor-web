@@ -1,33 +1,30 @@
 """
 Módulo de JWT (JSON Web Tokens)
-================================
-
-Funciones utilitarias para crear y verificar tokens JWT firmados.
 """
-
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
-
 from jose import JWTError, jwt
-
 from app.config import settings
 
 
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     """
-    Crea un token JWT firmado con expiración.
-
+    Crea un token JWT de acceso
+    
     Args:
-        data: Payload base del token (ej: {"sub": user_id})
-        expires_delta: Tiempo opcional de expiración
-
+        data: Datos a incluir en el token (ej: {"sub": user_id})
+        expires_delta: Tiempo de expiración personalizado
+    
     Returns:
-        Token JWT codificado como string
+        Token JWT codificado
     """
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=settings.jwt_access_token_expire_minutes)
-    )
+    
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=settings.jwt_access_token_expire_minutes)
+    
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.jwt_secret, algorithm=settings.jwt_algorithm)
     return encoded_jwt
@@ -35,13 +32,13 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
 
 def verify_token(token: str) -> Optional[Dict[str, Any]]:
     """
-    Verifica y decodifica un token JWT.
-
+    Verifica y decodifica un token JWT
+    
     Args:
         token: Token JWT a verificar
-
+    
     Returns:
-        Payload decodificado si es válido, None si es inválido o expiró
+        Payload del token si es válido, None en caso contrario
     """
     try:
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
@@ -52,15 +49,15 @@ def verify_token(token: str) -> Optional[Dict[str, Any]]:
 
 def get_user_from_token(token: str) -> Optional[str]:
     """
-    Obtiene el identificador de usuario ("sub") desde un token JWT.
-
+    Obtiene el ID de usuario desde un token JWT
+    
     Args:
         token: Token JWT
-
+    
     Returns:
-        ID de usuario como string, o None si el token es inválido
+        ID del usuario (sub claim) si el token es válido, None en caso contrario
     """
     payload = verify_token(token)
-    if not payload:
+    if payload is None:
         return None
     return payload.get("sub")
