@@ -12,11 +12,13 @@ psycopg2-binary==2.9.9
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-dotenv==1.0.0
+bcrypt==4.0.1
 
 # Validación de datos
 pydantic==2.5.0
 pydantic-settings==2.1.0
+email-validator==2.1.0.post1
 
 # Utilidades
 httpx==0.25.2
-
+docker==6.1.3
