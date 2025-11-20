@@ -83,8 +83,14 @@ services:
     restart: unless-stopped
     volumes:
       - ./docker/proxy/Caddyfile.dev:/etc/caddy/Caddyfile:ro
+      - ./certs:/etc/caddy/certs:ro  # Montar certificados SSL locales (opcional, para mkcert)
+      - caddy_data:/data  # Para almacenar certificados de Let's Encrypt
+      - caddy_config:/config  # Para configuración de Caddy
     ports:
-      - "${DEV_PROXY_HTTP_PORT:-8080}:8080"
+      - "80:80"   # HTTP (necesario para Let's Encrypt)
+      - "443:443" # HTTPS (necesario para Let's Encrypt)
+      - "${DEV_PROXY_HTTP_PORT:-8080}:8080"   # HTTP alternativo (opcional)
+      - "${DEV_PROXY_HTTPS_PORT:-8443}:8443"  # HTTPS alternativo (opcional)
     depends_on:
       - frontend
       - api
@@ -93,6 +99,8 @@ services:
 
 volumes:
   db_data:
+  caddy_data:  # Para certificados automáticos de Caddy
+  caddy_config:  # Para configuración de Caddy
 
 networks:
   auditor_net:

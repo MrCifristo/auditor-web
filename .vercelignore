@@ -1,0 +1,14 @@
+# Archivos y directorios a ignorar en Vercel
+backend/
+docker/
+db/
+env/
+reports/
+scripts/
+docs/
+*.md
+!DEPLOYMENT.md
+!README.md
+docker-compose*.yml
+*.sh
+

@@ -1,13 +1,16 @@
 {
-  email tu-correo@ejemplo.com
+  # Email para Let's Encrypt (requerido para certificados SSL)
+  email miltonbeltrac18@gmail.com
 }
 
-auditor.tu-dominio.com {
+# Frontend principal
+miltonbeltran.online {
   encode gzip
   reverse_proxy frontend:3000
 }
 
-api.auditor.tu-dominio.com {
+# API en subdominio (opcional, puedes usar /api en el mismo dominio)
+api.miltonbeltran.online {
   encode gzip
   reverse_proxy api:8000
 }
