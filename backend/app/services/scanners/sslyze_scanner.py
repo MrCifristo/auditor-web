@@ -93,28 +93,48 @@ class SSLyzeScanner:
             return findings
         
         try:
-            # Ejecutar SSLyze con salida JSON
+            print(f"[SSLyzeScanner] Iniciando escaneo de {hostname} con timeout de {self.timeout}s")
+            
+            # Ejecutar SSLyze con detach=True para controlar timeout
             container = self.docker_client.containers.run(
                 self.image,
                 command=f"--json_out - {hostname}",
-                detach=False,
-                remove=True,
+                detach=True,
+                remove=False,
                 network_mode="host",
-                timeout=self.timeout,
                 mem_limit="512m"
             )
             
-            if container:
-                output = container.decode('utf-8')
-                findings = self._normalize_sslyze_findings(output)
-            else:
-                findings.append({
-                    "severity": FindingSeverity.INFO,
-                    "title": "SSLyze Scan Completed",
-                    "description": f"SSLyze scan completed for {hostname}",
-                    "evidence": "No detailed output available.",
-                    "recommendation": "Review SSLyze configuration."
-                })
+            try:
+                # Esperar a que termine con timeout
+                container.wait(timeout=self.timeout)
+                print(f"[SSLyzeScanner] Contenedor terminado exitosamente")
+                
+                # Obtener logs del contenedor
+                logs = container.logs(stdout=True, stderr=True)
+                container.remove()
+                
+                if logs:
+                    output = logs.decode('utf-8')
+                    findings = self._normalize_sslyze_findings(output)
+                else:
+                    findings.append({
+                        "severity": FindingSeverity.INFO,
+                        "title": "SSLyze Scan Completed",
+                        "description": f"SSLyze scan completed for {hostname}",
+                        "evidence": "No detailed output available.",
+                        "recommendation": "Review SSLyze configuration."
+                    })
+                    
+            except Exception as wait_error:
+                print(f"[SSLyzeScanner] Error esperando contenedor: {str(wait_error)}")
+                # Si el contenedor no termina en el timeout, detenerlo
+                try:
+                    container.stop(timeout=5)
+                    container.remove()
+                except:
+                    pass
+                raise Exception(f"Timeout o error ejecutando SSLyze: {str(wait_error)}")
             
         except Exception as e:
             findings.append({

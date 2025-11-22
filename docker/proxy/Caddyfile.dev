@@ -5,6 +5,29 @@
   # debug
 }
 
+# Escuchar en puerto 8443 para HTTPS alternativo
+:8443 {
+  encode gzip
+  tls /etc/caddy/certs/localhost+2.pem /etc/caddy/certs/localhost+2-key.pem
+
+  # Rutas hacia el backend (API)
+  handle_path /api/* {
+    uri strip_prefix /api
+    reverse_proxy api:8000
+  }
+
+  # Accesos directos a /docs y /openapi.json
+  @docs path /docs* /openapi.json
+  handle @docs {
+    reverse_proxy api:8000
+  }
+
+  # Resto del tráfico → frontend Next.js
+  handle {
+    reverse_proxy frontend:3000
+  }
+}
+
 # Configuración con tu dominio real
 # Asegúrate de que miltonbeltran.online apunte a tu IP pública
 miltonbeltran.online {
@@ -36,11 +59,19 @@ localhost {
   encode gzip
   tls /etc/caddy/certs/localhost+2.pem /etc/caddy/certs/localhost+2-key.pem  # Certificados mkcert (confiables)
 
-  @api path /api* /docs* /openapi.json
-  handle @api {
+  # Rutas hacia el backend (API)
+  handle_path /api/* {
+    uri strip_prefix /api
     reverse_proxy api:8000
   }
 
+  # Accesos directos a /docs y /openapi.json
+  @docs path /docs* /openapi.json
+  handle @docs {
+    reverse_proxy api:8000
+  }
+
+  # Resto del tráfico → frontend Next.js
   handle {
     reverse_proxy frontend:3000
   }

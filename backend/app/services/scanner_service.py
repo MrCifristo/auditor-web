@@ -18,12 +18,17 @@ class ScannerService:
     
     def __init__(self):
         """Inicializar cliente de Docker"""
-        base_url = settings.docker_base_url or "unix:///var/run/docker.sock"
+        # Usar docker.from_env() que maneja mejor las variables de entorno
+        # y es compatible con urllib3
         self.docker_client = None
         try:
-            self.docker_client = docker.DockerClient(base_url=base_url)
+            # Si hay una variable DOCKER_HOST configurada, usarla
+            # Si no, docker.from_env() usará el socket por defecto
+            self.docker_client = docker.from_env()
+            # Verificar que funciona haciendo un ping
+            self.docker_client.ping()
         except Exception as e:
-            print(f"[ScannerService] No se pudo conectar a Docker ({base_url}). Se usarán resultados simulados. Detalle: {e}")
+            print(f"[ScannerService] No se pudo conectar a Docker. Se usarán resultados simulados. Detalle: {e}")
     
     @staticmethod
     def execute_scan(db: Session, job_id: str, target_url: str, tools: List[str]):
@@ -49,34 +54,47 @@ class ScannerService:
         db.refresh(job)
         
         try:
+            print(f"[ScannerService] Iniciando escaneo para job {job_id}, herramientas: {tools}, target: {target_url}")
+            
             # Ejecutar cada herramienta
             for tool in tools:
+                print(f"[ScannerService] Ejecutando herramienta: {tool}")
                 findings = []
                 
-                if tool == "ZAP":
-                    findings = service._run_zap(target_url)
-                elif tool == "Nuclei":
-                    findings = service._run_nuclei(target_url)
-                elif tool == "SSLyze":
-                    findings = service._run_sslyze(target_url)
-                
-                # Guardar findings en la base de datos
-                for finding_data in findings:
-                    finding = Finding(
-                        job_id=job_id,
-                        severity=finding_data["severity"],
-                        title=finding_data["title"],
-                        description=finding_data.get("description"),
-                        evidence=finding_data.get("evidence"),
-                        recommendation=finding_data.get("recommendation"),
-                        tool=tool
-                    )
-                    db.add(finding)
+                try:
+                    if tool == "ZAP":
+                        findings = service._run_zap(target_url)
+                    elif tool == "Nuclei":
+                        findings = service._run_nuclei(target_url)
+                    elif tool == "SSLyze":
+                        findings = service._run_sslyze(target_url)
+                    
+                    print(f"[ScannerService] {tool} completado, {len(findings)} findings encontrados")
+                    
+                    # Guardar findings en la base de datos
+                    for finding_data in findings:
+                        finding = Finding(
+                            job_id=job_id,
+                            severity=finding_data["severity"],
+                            title=finding_data["title"],
+                            description=finding_data.get("description"),
+                            evidence=finding_data.get("evidence"),
+                            recommendation=finding_data.get("recommendation"),
+                            tool=tool
+                        )
+                        db.add(finding)
+                        
+                except Exception as tool_error:
+                    print(f"[ScannerService] Error ejecutando {tool}: {str(tool_error)}")
+                    # Continuar con las siguientes herramientas aunque una falle
+                    continue
             
             # Actualizar estado del job a done
+            print(f"[ScannerService] Escaneo completado para job {job_id}")
             job.status = JobStatus.DONE
             job.finished_at = datetime.utcnow()
             db.commit()
+            print(f"[ScannerService] Job {job_id} marcado como DONE")
             
         except Exception as e:
             # Actualizar estado del job a failed

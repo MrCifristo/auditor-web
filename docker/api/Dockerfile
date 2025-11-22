@@ -20,10 +20,11 @@ RUN pip install --upgrade pip \
 # Copia del código (Rol A llenará backend/)
 COPY backend /app/backend
 
-# Usuario no root
-RUN useradd -m -u 1001 appuser \
-    && chown -R appuser /app
-USER appuser
+# Usuario no root (comentado para desarrollo - necesita acceso a docker socket)
+# En producción, descomentar estas líneas y ajustar permisos
+# RUN useradd -m -u 1001 appuser \
+#     && chown -R appuser /app
+# USER appuser
 
 WORKDIR /app/backend
 

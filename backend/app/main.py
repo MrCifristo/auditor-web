@@ -15,13 +15,14 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# CORS middleware (configurar según necesidades)
+# CORS middleware - Configuración completamente permisiva para desarrollo
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción, especificar dominios permitidos
+    allow_origins=["*"],  # Permitir todos los orígenes
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Permitir todos los métodos
+    allow_headers=["*"],  # Permitir todos los headers
+    expose_headers=["*"],  # Exponer todos los headers
 )
 
 
